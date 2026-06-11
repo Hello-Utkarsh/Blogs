@@ -1,3 +1,9 @@
+As part of my backend engineering roadmap, this week I explored database optimization.
+
+In modern applications, performance bottlenecks often come from how we manage database connections, how frequently we access the database, and how efficiently we store and retrieve frequently used data. Concepts like connection pooling and caching exist not because databases are slow, but because resources are limited and applications need ways to use them efficiently.
+
+The goal isn't to provide a complete guide to database optimization. Instead, it's to document what I learned, the assumptions that turned out to be wrong, and the ideas that helped me better understand how backend systems behave under load.
+
 # Connection Pool
 
 So imagine this, you have a store and you are handling it alone and all of a sudden 100 customers came all together, would you be able to handle all of them alone?? You had to manage 1st customer, then 2nd, then 3rd and it'll take hours or maybe more, so what you'll do?? Most probably you call a few of your family members for help or maybe hire a few workers.
@@ -139,7 +145,7 @@ Most people say, a few hundreds, but i dont think there is a exact value for thi
 
 ```cmd
 <!-- TESTING WITH POOL SIZE 2000 -->
-npx autocannon -c 1000 -d 20
+npx autocannon -c 1000 -d 20 http://localhost:3000/pool
 ```
 
 ```cmd
@@ -174,7 +180,7 @@ Req/Bytes counts sampled once per second.
 
 ```cmd
 <!-- TESTING WITH POOL SIZE 10000 -->
-npx autocannon -c 1000 -d 20
+npx autocannon -c 1000 -d 20 http://localhost:3000/pool
 ```
 
 ```cmd
@@ -206,7 +212,7 @@ As you can see with a pool size of 200, the db was able to handle 13k requests a
 
 # Caching
 
-So now you have multiple workers in your store, but suppose you are getting a lot of customers for a particular item, would you send your worker again and again to get that item?? No, what you can do is send your worker once and ask him to bring that item in bulk at once maybe 8 or 9 and keep it near the counter, lets say a big box near the counter(or a cache), so its easily accessible right.
+So now you have multiple workers in your store, but suppose you are getting a lot of customers for a particular item, would you send your worker again and again to get that item?? No, what you can do is send your worker once and ask him to bring that item in bulk at once maybe 8 or 9 and keep it near the counter, lets say in a big box near the counter(or a cache), so its easily accessible right.
 
 Caching is very similar, once you get your data from db, you save it in-memory storage or a local storage for easy and fast access. There are multiple ways of saving cache, lets discuss about them one by one
 
@@ -329,20 +335,35 @@ LFRU splits the cache into two distinct partitions to handle different access pa
 
 Cache invalidation is the process of removing or marking cache entries as invalid when underlying data changes. Unlike eviction (driven by capacity), invalidation is driven by data changes to maintain consistency.
 
-- Time-Based Invalidation: Cache entries are invalidated after a fixed time period, similar to TTL eviction. This ensures data freshness but may invalidate entries that haven’t changed.
+- **Time-Based Invalidation**: Cache entries are invalidated after a fixed time period, similar to TTL eviction. This ensures data freshness but may invalidate entries that haven’t changed.
 
-- Event-Based Invalidation: Cache entries are invalidated when specific events occur, such as data updates or deletions. This maintains better consistency but requires tracking dependencies between data and cache entries.
+- **Event-Based Invalidation**: Cache entries are invalidated when specific events occur, such as data updates or deletions. This maintains better consistency but requires tracking dependencies between data and cache entries.
 
-- Manual Invalidation: Cache entries are explicitly invalidated by application code or administrators. This provides full control but requires careful management to avoid stale data.
+- **Manual Invalidation**: Cache entries are explicitly invalidated by application code or administrators. This provides full control but requires careful management to avoid stale data.
 
-- Tag-Based Invalidation: Cache entries are tagged with metadata, and invalidation occurs by tag. This allows invalidating multiple related entries simultaneously, useful for hierarchical or related data.
+- **Tag-Based Invalidation**: Cache entries are tagged with metadata, and invalidation occurs by tag. This allows invalidating multiple related entries simultaneously, useful for hierarchical or related data.
 
 # Redis
 
 Redis is an in-memory data store that runs as its own server process. It stores data across requests and users, making it ideal for server-side caching and shared state management.
 
-<!-- -----------------  -->
+**Core Characteristics**
 
+- In-Memory Storage: Keeps all data in RAM for instantaneous read/write operations
+- Data Structure Server: Unlike typical key-value stores, it supports rich, native data types like strings, hashes, lists, sets, sorted sets, streams, and geospatial indexes
+- Persistence: Offers optional on-disk persistence (RDB snapshots or AOF append-only files) so in-memory data survives restarts or crashes
+- High Availability & Scalability: Features built-in replication, clustering, and automated failover (Redis Sentinel) to ensure maximum uptime
+- Atomic Operations: Guarantees atomicity for its operations, allowing safe concurrent data modification.
+
+**Use Cases**
+
+- Database & API Caching: Temporarily stores frequently accessed data or complex query results in RAM to reduce backend database load and accelerate API response times.
+- Session Management: Persists user login, cart, and state data for web applications. It handles this instantly and avoids data loss if a single server goes down.
+- Real-Time Analytics & Leaderboards: Uses atomic counters and sorted sets to effortlessly track real-time metrics (e.g., page views, rate limits) and display live rankings
+- Pub/Sub Messaging: Powers real-time chat applications, notification services, and event-driven pipelines using its lightweight publish/subscribe engine and Redis Streams.
+  And a lot more
+
+I would suggest you to go through the [docs](https://redis.io/docs/latest/develop/) to learn about how to use redis.
 Ohkk so now we know how, where and duration for which we should cache but the bigger question is WHAT? What things should we actually cache, we cannot just cache everything, as in-memory storage are not very cheap.
 
 # What to Cache and When
@@ -418,3 +439,13 @@ We can set log_min_duration_statement in postgresql.conf to log queries that exc
 ```
 set log_min_duration_statement=1000;
 ```
+
+# Closing Thoughts
+
+This week taught me that database optimization is often less about making queries faster and more about managing resources efficiently.
+
+Before diving into connection pooling and caching, I assumed that handling more traffic mostly meant adding more resources or increasing configuration limits. Running experiments showed me that things aren't that simple. Increasing pool sizes doesn't always improve throughput, caching introduces its own trade-offs, and every optimization comes with questions about consistency, memory usage, and system complexity.
+
+This week helped me build a stronger foundation for understanding how real systems handle increasing load and why seemingly simple decisions can have a significant impact on performance.
+
+As I continue this backend engineering roadmap, I'll keep sharing notes, experiments, mistakes, and lessons learned along the way. If you've spotted something I've misunderstood or have suggestions for further reading, I'd be happy to learn from them.
