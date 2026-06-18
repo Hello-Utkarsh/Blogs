@@ -211,5 +211,91 @@ Seq Scan on olist_order_items  (cost=0.00..3728.12 rows=62397 width=0) (actual t
 
 Now we go above above the tree, after the above explanation I guess understanding the aggregation node is pretty easy right, the same cost, actual time and stuff data, so i would urge you to go through it yourself and try to understand it.
 
+# Indexing
 
+So index is a separate data structure which refers to the table just like the index page of a book which helps you find a single chapters from a book of thousands of pages. But how often are the books content updated?? Maybe after a year or 2, but a database table cannot wait that long to get updated, since there are soo many `Create`, `Update` or `Delete` queries being constantly processed, that's why Postgres uses a combination of two  data structure: a doubly linked list and a search tree. Lets discuss each one of them one by one
 
+## Doubly Linked List
+
+The main purpose of an index is to provide an ordered representation of the indexed data but its really really difficult since the data is constantly being re-written, deleted, or inserted, so to overcome that, an index saves the location/reference of the actual data in the table. It contains multiple nodes each referring to one row in the table and each node refers to the preceding and the following node, just like a chain. It enables the database to read the index forwards or backwards as needed. It is thus possible to insert new entries without moving large amounts of data—it just needs to change some pointers.
+
+AN IMAGE REFRENCE WILL GO HERE
+
+## The Search Tree(B-Tree)
+
+Now we have our indexes, but those indexes are stored in an arbitrary order—the position on the disk does not correspond to the logical position according to the index order. A database needs a second structure to find the entry among the shuffled pages quickly: a _balanced search tree_—in short: the B-tree.
+
+AN IMAGE REFERENCE WILL GO HERE
+
+As you might notice in the above figure that each branch node entry corresponds to the biggest value in the respective leaf node. According to this scheme, a branch layer is built up until all the leaf nodes are covered by a branch node. The next layer is built similarly, but on top of the first branch node level. The procedure repeats until all keys fit into a single node, the _root node_. The structure is a _balanced search tree_ because the tree depth is equal at every position; the distance between root node and leaf nodes is the same everywhere. Once created, the database maintains the index automatically. It applies every `insert`, `delete` and `update` to the index and keeps the tree in balance. 
+
+Even after all these stuff, there might be situations where your queries are slow and it might not be your mistake, for example The first ingredient for a slow index lookup is the leaf node chain. Consider the search for “57” in [Figure 1.3](https://use-the-index-luke.com/sql/anatomy/the-tree#TreeTraversal) again. There are obviously two matching entries in the index. At least two entries are the same, or the next leaf node could have further entries for “57”. The database _must_ read the next leaf node to see if there are any more matching entries. That means that an index lookup not only needs to perform the tree traversal, it also needs to follow the leaf node chain.
+
+Secondly, even a single leaf node might contain many hits—often hundreds. The corresponding table data is usually scattered across many table blocks. That means that there is an additional table access for each hit.
+
+# The Where Clause
+
+So lets start with a very simple where clause
+
+```
+explain select * from olist_order_items where order_id='f05aaa145a323239764fc5948997db58'
+
+	                        QUERY PLAN
+-----------------------------------------------------------------------------
+ Index Scan using olist_order_items_pkey on olist_order_items  (cost=0.42..8.44 rows=1 width=123)
+   Index Cond: ((order_id)::text = 'f05aaa145a323239764fc5948997db58'::text)
+(2 rows)
+```
+
+As you can see, we created the table with primary key(order_id, order_item_id) so we are getting an `Index Scan` rather than the usual seq scan, i.e. postgres is utilizing the index to search. These types of query might become slow if there are a lot of entries with the same order_id, but there is no such risk in connection with an `INDEX UNIQUE SCAN` i.e. when a column has a `unque` constraint. This operation cannot deliver more than one entry so it cannot trigger more than one table access.
+
+## Concatenated Indexes
+
+It is also known as _multi-column_, _composite_ or _combined_ index and as the name suggests, this kind of index is created on multiple columns i.e. one index for multiple columns, and the column order of a concatenated index has great impact on its usability so it must be chosen carefully.
+
+```
+\d olist_order_items
+
+                          Table "public.olist_order_items"
+       Column        |            Type             | Collation | Nullable | Default
+---------------------+-----------------------------+-----------+----------+--
+ order_id            | character varying(32)       |           | not null |
+ order_item_id       | integer                     |           | not null |
+ product_id          | character varying(32)       |           |          |
+ seller_id           | character varying(32)       |           |          |
+ shipping_limit_date | timestamp without time zone |           |          |
+ price               | numeric(10,2)               |           |          |
+ freight_value       | numeric(10,2)               |           |          |
+Indexes:
+    "olist_order_items_pkey" PRIMARY KEY, btree (order_id, order_item_id)
+Foreign-key constraints:
+    "olist_order_items_order_id_fkey" FOREIGN KEY (order_id) REFERENCES olist_orders(order_id)
+    "olist_order_items_product_id_fkey" FOREIGN KEY (product_id) REFERENCES olist_products(product_id)
+    "olist_order_items_seller_id_fkey" FOREIGN KEY (seller_id) REFERENCES olist_sellers(seller_id)
+```
+
+As you can see under the `Indexes` there is a 1 index for 2 columns(order_id and order_item_id), so the index should also work for order_item_id also right?? Lets test it
+
+```
+explain select * from olist_order_items where order_item_id=2;
+                               QUERY PLAN
+-------------------------------------------------------------------------
+ Seq Scan on olist_order_items  (cost=0.00..3728.12 rows=9797 width=123)
+   Filter: (order_item_id = 2)
+(2 rows)
+```
+
+Wait, that's a `Seq Scan`, why not `Index Scan`??
+
+Its because the data is physically sorted first by `order_id`, and then _within_ each matching `order_id`, it is sorted by `order_item_id`.
+
+Think of a phone book indexed by `(Last Name, First Name)`.
+
+- If you search for everyone named **"Smith"** (the 1st column), you can jump straight to the "S" section. This is an **Index Scan**.
+- If you search for everyone named **"John"** (the 2nd column), the alphabetical sorting by last name does not help you. "John" could be on page 1 (John Adams), page 50 (John Miller), or page 100 (John Smith). You have to read the entire phone book from start to finish. This is a **Seq Scan**
+
+Because the database engine cannot skip steps in the sorted structure of the composite index, it ignores the index entirely and scans the whole table i.e. `Seq Scan`
+
+Even though the two-index solution delivers very good `select` performance as well, the single-index solution is preferable. It not only saves storage space, but also the maintenance overhead for the second index. The fewer indexes a table has, the better the `insert`, `delete` and `update` performance.
+
+## Greater, Less and Between
