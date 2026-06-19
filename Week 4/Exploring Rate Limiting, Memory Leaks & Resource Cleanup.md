@@ -1,3 +1,9 @@
+<!--
+title: Exploring Rate Limiting, Memory Leaks & Resource Cleanup
+date: 2026-06-14
+tags: Rate Limiting
+-->
+
 So in our previous few weeks we have been trying to learn to optimize api responses and database queries so that our users are able to get their data instantly and without overwhelming our servers and databases. 
 
 But sometimes there are users/attackers/bots who keep spamming our apis which results in crashing of our servers, no matters how much you optimize your queries or cache your data, there is a limit to which servers and databases can handle requests and after that they goes down/crashes
@@ -92,7 +98,7 @@ app.listen(port, () => {
 });
 ```
 
-![[Leaky Bucket Test.png]]
+![Leaky Bucket Test Results](https://github.com/Hello-Utkarsh/Blogs/blob/main/Week%204/resources/Leaky%20Bucket%20Test.png?raw=true)
 
 As you can see at first it was printing empty because there was no requests in the bucket, and then i sent 6 request, 1/per second using autocannon, but you can se we are getting the log at the interval of 2 seconds, that's because the request is firstly sent in the bucket and then executed at a constant rate of 1 request/ per 2 second. 
 

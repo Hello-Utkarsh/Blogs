@@ -1,10 +1,16 @@
+<!--
+title: Building a Mental Model of PostgreSQL
+date: 2026-05-24
+tags: Postgres
+-->
+
 So this is my first week of Backend Learning Journey and this week......
 
 # Setup
 
 So firstly let's get our postgres database and tables up and running. I'll be using docker, but you can use any cloud postgres storage also(supabase, render etc)
 
-You can find the tables that I'll be using in the [resource folder of my github]()
+You can find the tables that I'll be using in the [resource folder of my github](https://github.com/Hello-Utkarsh/Blogs/tree/main/Week%201/resources)
 
 So firstly let start our postgres container and start a terminal inside our container
 ``` bash

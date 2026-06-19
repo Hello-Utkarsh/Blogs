@@ -1,3 +1,8 @@
+<!--
+title: Exploring API Performance Optimization - Caching, Query Efficiency & Pagination
+date: 2026-06-07
+tags: Browser Caching, Redis, Pagination
+-->
 # Browser Caching
 
 So one of the best place to cache any web data is in the tool itself we use the most to view that data i.e. the web browser
@@ -8,14 +13,14 @@ So one of the best place to cache any web data is in the tool itself we use the 
 
 Initially browsers don't have any cache, its after their 1st request to the website that they get the data and are able to store it
 
-![Before cache stats](./resources/before_cache.png)
+![Before cache stats](https://github.com/Hello-Utkarsh/Blogs/blob/main/Week%203/resources/before_cache.png?raw=true)
 So here we can see that 3.71mb of data was transferred
 
 ### Case 2: When the user has visited the before
 
 In this case the browser will retrieve the HTML page from the web server but consult its cache for the static assets (JavaScript, CSS, images).
 
-![After Cache stats](./resources/after_cache.png)
+![After Cache stats](https://github.com/Hello-Utkarsh/Blogs/blob/main/Week%203/resources/before_cache.png?raw=true)
 
 As you can see the transferred data drops from 3.71mb to 34.24kb which is around 100x lesser than the initial page load
 The transferred columns shows all the files that were cached by the browser after the 1st visit

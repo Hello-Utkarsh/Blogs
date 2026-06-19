@@ -1,3 +1,9 @@
+<!--
+title: Exploring Database Pooling, Caching & Scaling
+date: 2026-05-31
+tags: Postgres, Cache Patterns
+-->
+
 As part of my backend engineering roadmap, this week I explored database optimization.
 
 In modern applications, performance bottlenecks often come from how we manage database connections, how frequently we access the database, and how efficiently we store and retrieve frequently used data. Concepts like connection pooling and caching exist not because databases are slow, but because resources are limited and applications need ways to use them efficiently.
